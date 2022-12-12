@@ -3,27 +3,80 @@ USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_arith.ALL;
 USE ieee.std_logic_unsigned.ALL;
 
-entity Cruce is
+entity fsm is
 	port(
       clk    : in std_logic;
       reset  : in std_logic; --todo a rojo, estado S2
       sensor : in std_logic;
-      p1     : in std_logic;
-      p2     : in std_logic;
-      --p1a:    in std_logic;
-      --p1b:    in std_logic;
-      --p2a:	in std_logic;
-      --p2b:	in std_logic;
+      --p1     : in std_logic;
+      --p2     : in std_logic;
+      p1a:    in std_logic;
+      p1b:    in std_logic;
+      p2a:	in std_logic;
+      p2b:	in std_logic;
       sal    : out std_logic_vector (9 downto 0)
       );
-end entity Cruce;
+end entity fsm;
 
-architecture Estados of Cruce is
-type estado is (S0,S1,S2,S3,S4,S5,S5i,S6,S6i,S7,S7i,S8,S8i);
+architecture Estados of fsm is
+
+-- DECLARACIÓN DE COMPONENTES
+
+component COUNTER -- Contador con precarga (usaremos 2 porque en algún momento hay que tomar dos tiempos simultaneos)
+port(
+ CLK : in std_logic; -- Entra el clock que sale del counter
+ RESET_N : in std_logic;
+ MAX : in std_logic_vector (4 downto 0); -- Hasta cuanto queremos que nos cuente. --WHIDTH!!!!!!!
+ COUT : out std_logic_VECTOR (4 downto 0) -- Avisa de cuando termina la cuenta de tiempo --WIDTH TAMBBIEN!!!!!!
+ );
+end component;
+
+component PREESCALER
+port(
+ CLK_IN : in std_logic; -- Reloj normal de entrada
+ CLK_OUT : out std_logic -- Reloj con frecuencia adecuada
+ );
+end component;
+
+--DECLARACIÓN DE ESTADOS (Y SUS SEÑALES)
+
+type estado is (S0,S1,S2,S3,S4,S5,S5i,S6,S6i);
     signal actual : Estados;
     signal prox : Estados;
     
-    begin
+--DECLARACIÓN DE SEÑALES 
+
+signal clk_s : std_logic;
+signal tiempo1 : std_logic_vector (4 downto 0); --Esto va con WIDTH DOWNTO 0
+signal tiempo2 : std_logic_vector (4 downto 0); --Esto va con WIDTH DOWNTO 0
+signal max1 : std_logic_vector (4 downto 0); --Esto va con WIDTH DOWNTO 0
+signal max2 : std_logic_vector (4 downto 0); --Esto va con WIDTH DOWNTO 0
+
+begin
+
+--INSTANCIACIÓN DE COMPONENTES
+
+    Inst_PREESCALER : PREESCALER port map(
+    CLK_IN => clk, -- Entra el reloj normal
+    CLK_OUT => clk_s-- Sale el reloj con la frecuencia correspondiente
+    );
+    
+    Inst_COUNTER_1 : COUNTER port map(
+    MAX => max1, -- Entra la precarga que recibe desde fsm
+    RESET_N => reset,
+	CLK => clk_s,
+	COUT => tiempo1 -- Devuelve el tiempo que lleva
+    );
+    
+    Inst_COUNTER_2 : COUNTER port map(
+    MAX => max2, -- Entra la precarga que recibe desde fsm
+    RESET_N => reset,
+	CLK => clk_s,
+	COUT => tiempo2 -- Devuelve el tiempo que lleva
+    );
+    
+ --PROCESOS
+
     Secuencial:
     	process(clk);
         begin
@@ -37,16 +90,16 @@ type estado is (S0,S1,S2,S3,S4,S5,S5i,S6,S6i,S7,S7i,S8,S8i);
     end process Secuencial;
     
     Combinacional:
-    -- Para coches: Rojo: 001, �mbar: 010, Verde: 100
+    -- Para coches: Rojo: 001, Ámbar: 010, Verde: 100
     -- Para peatones: Rojo: 01, Verde: 10
-    -- Rural/Carretera/Peat�n_Rural/Peat�n_Carretera
-    -- Sem�foro1/Sem�foro2/Sem�foroPeatones1/Sem�foroPeatones2
-    --Significado de los estados:
+    -- Rural/Carretera/Peatón_Rural/Peatón_Carretera
+    -- Semáforo1/Semáforo2/SemáforoPeatones1/SemáforoPeatones2
+    -- Significado de los estados:
     -- Estado S0: rojo/verde/rojo/rojo
-    -- Estado S1: rojo/�mbar/rojo/rojo
+    -- Estado S1: rojo/ámbar/rojo/rojo
     -- Estado S2: rojo/rojo/rojo/rojo (estado coincidente con reset)
     -- Estado S3: verde/rojo/rojo/rojo
-    -- Estado S4: �mbar/rojo/rojo/rojo
+    -- Estado S4: ámbar/rojo/rojo/rojo
     -- Estado S5: rojo/rojo/rojo/verde
     -- Estado S5i: rojo/rojo/rojo/parpadeo verde
     -- Estado S6: verde/rojo/rojo/verde
@@ -58,115 +111,98 @@ type estado is (S0,S1,S2,S3,S4,S5,S5i,S6,S6i,S7,S7i,S8,S8i);
     
     
     --OJO FALTA IMPLEMENTAR BIEN LOS TEMPORIZADORES T1 y T2: T1 el corto, T2 el largo, lo he indicado con '--'
-    process(all);
+    process(all)
     begin
     	case actual is
         	when S0 => 
-            	sal <= 0011000101;
+            	sal <= "0011000101";
+            	max2 <= "11100"; -- ASIGNAR UN VALOR DE TIEMPO
                 if sensor = '1' or p2 = '1' then
                     prox <= S1;
+                elsif p1 = '1' and max2 = tiempo2 then -- TIEMPO ROJO EXTRA
+                	prox <= S6;
                 else prox <= S0;
                 end if;
             when S1 =>
-            	sal <= 0010100101;
-                if TA2 then --
+            	sal <= "0010100101";
+            	max1 <= "11100"; -- ASIGNAR UN VALOR DE TIEMPO
+                if max1 = tiempo1 then -- Tiempo ámbar 2
                 	prox <= S2;
                 else
                 	prox <= S1;
                 end if;
            when S2 =>
-            	sal <= 0010010101;
-                if sensor = '0' and p2 = '0' and TR1 then -- --DUDA
+            	sal <= "0010010101";
+            	max1 <= "11100"; --ASIGNAR UN VALOR
+                if sensor = '0' and p2 = '0' and max1 = tiempo1 then -- TIEMPO TODO ROJO
                 	prox <= S0;
-          		elsif p2 = '1' and TR2 then --
-                	prox <= S5;
-                elsif p1 = '1' and TR1 then --
-                	prox = S7;
-                elsif sensor = '1' and TR2 then --
+                elsif sensor = '1' and max1 = tiempo1 then -- TIEMPO TODO ROJO
                 	prox = S3;
                 else
                 	prox <= S2;
                 end if;
             when S3 =>
-            	sal <= 1000010101;
-                if p2 = '1' and TR2 then --
-                	prox <= S6;
-                elsif TV1 then --
+            	sal <= "1000010101";
+            	max1 <= "11100"; --ASIGNAR UN VALOR
+            	max2 <= "11100"; --ASIGNAR UN VALOR
+                if p2 = '1' and max2 = tiempo2 then -- TIEMPO ROJO EXTRA
+                	prox <= S5;
+                elsif max1 = tiempo1 then -- TIEMPO VERDE SEMAFORO 1
                 	prox <= S4;
                 else
                 	prox <= S3;
                 end if;
             when S4 =>
-            	sal <= 0100010101;
-                if TA1 then --
+            	sal <= "0100010101";
+            	max1 <= "11100"; --ASIGNAR UN VALOR
+                if max1 = tiempo1 then -- TIEMPO ÁMBAR
                 	prox <= S2;
                 else
                 	prox <= S4;
                 end if;
             when S5 =>
-            	sal <= 0010010110;
-                if Tint then --
+            	sal <= "1000010110";
+            	max2 <= "11100"; --ASIGNAR UN VALOR
+                if max2 = tiempo2 then -- TIEMPO VERDE ANTES DE INTERMITENTE
                 	prox <= S5i;
                 else
                 	prox <= S5;
                 end if;
             when S5i =>
-                sal <= 0010010100; -- SP1 rojo, SP2 todo apagado
-                wait for TVuelta/6;
-                sal <= 0010011010; -- SP1 rojo, SP2 verde encendido
-                wait for TVuelta/6;
-                if TVuelta
-                    prox <= S2;
+            max2 <= "11100"; -- ASIGNAR UN VALOR
+                while tiempo2<max2 loop
+                if tiempo2(0) = '0' then
+                    sal <= "1000010100"; -- SP1 rojo, SP2 todo apagado
+                else
+                    sal <= "1000010110"; -- SP1 rojo, SP2 verde encendido
+                end if;
+                end loop;
+                if max2 = tiempo2 then -- TIEMPO ÁMBAR
+                    prox <= S3;
                 else
                     prox <= S5i;
-            when S6 =>
-            	sal <= 1000010110;
-                if Tint then --
+             when S6 =>
+            	sal <= "0011001001";
+            	max2 <= "11100"; -- ASIGNAR UN VALOR DE TIEMPO
+                if max2 = tiempo2 then -- TIEMPO EN VERDE HASTA INTERMITENTE
                 	prox <= S6i;
                 else
                 	prox <= S6;
                 end if;
             when S6i =>
-                sal <= 1000010100; -- SP1 rojo, SP2 todo apagado
-                wait for TVuelta/6;
-                sal <= 1000010110; -- SP1 rojo, SP2 verde encendido
-                wait for TVuelta/6;
-                if TVuelta
-                    prox <= S3;
+                max2 <= "11100"; -- ASIGNAR UN VALOR
+                while tiempo2<max2 loop
+                if tiempo2(0) = '0' then
+                    sal <= "0011000001"; -- SP1 todo apagado, SP2 actual
                 else
-                    prox <= S6i;
-            when S7 =>
-            	sal <= 0010011001;
-                if Tint then --
-                	prox <= S7i;
-                else
-                	prox <= S7;
+                    sal <= "0011001001"; -- SP1 verde encendido, SP2 actual
                 end if;
-            when S7i =>
-                sal <= 0010010001; -- SP1 todo apagado, SP2 rojo
-                wait for TVuelta/6;
-                sal <= 0010011001; -- SP1 verde encendido, SP2 rojo
-                wait for TVuelta/6;
-                if TVuelta
-                    prox <= S2;
-                else
-                    prox <= S7i;
-             when S8 =>
-            	sal <= 0011001001;
-                if Tint then --
-                	prox <= S8i;
-                else
-                	prox <= S8;
-                end if;
-            when S8i =>
-                sal <= 0011000001; -- SP1 todo apagado, SP2 rojo
-                wait for TVuelta/6;
-                sal <= 0011001001; -- SP1 verde encendido, SP2 rojo
-                wait for TVuelta/6;
-                if TVuelta
+                end loop;
+                if max2 = tiempo2 then -- TIEMPO ÁMBAR
                     prox <= S0;
                 else
-                    prox <= S8i;
+                    prox <= S6i;
+                end if;
     	end case;
     end process Combinacional;
 end architecture Estados;
