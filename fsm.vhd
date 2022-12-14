@@ -4,14 +4,14 @@ USE ieee.std_logic_arith.ALL;
 USE ieee.std_logic_unsigned.ALL;
 
 -- DUDAS y COSAS POR HACER:
--- Reset?
--- Asignar tiempos 
--- Lo de la WIDTH del counter
+-- Asignar tiempos: El valor de los tiempos se da en binario, siendo el número de flancos de reloj que representa ese tiempo.
+-- Lo del WIDTH del counter
+-- Aclarar lísta de sensibilidad
 
 entity fsm is
 	port(
       clk    : in std_logic;
-      reset  : in std_logic; --todo a rojo, estado S2
+      reset  : in std_logic; --todo a rojo, estado SR
       sensor : in std_logic;
       --p1     : in std_logic;
       --p2     : in std_logic;
@@ -45,7 +45,7 @@ end component;
 
 --DECLARACIÓN DE ESTADOS (Y SUS SEÑALES)
 
-type estado is (S0,S0i,S1,S2,S3,S3i,S4,S5,S5i,S6,S6i);
+type estado is (S0,S0i,S1,S2a,S2b,S3,S3i,S4,S5,S5i,S6,S6i,SR);
     signal actual : Estados;
     signal prox : Estados;
     
@@ -87,7 +87,7 @@ begin
         begin
         if rising_edge (clk) then
           if reset = '1' then
-              actual <= S2;
+              actual <= SR; -- Hemos establecido un estado de reset SR
           else
               actual <= prox;
           end if;
@@ -96,23 +96,25 @@ begin
     
     Combinacional:
     -- Para coches: Rojo: 001, Ámbar: 010, Verde: 100
-    -- Para peatones: Rojo: 01, Verde: 10
+    -- Para peatones: Rojo: 01, Verde: 10, Apagado (para el parpadeo): 00
     -- Rural/Carretera/Peatón_Rural/Peatón_Carretera
     -- Semáforo1/Semáforo2/SemáforoPeatones1/SemáforoPeatones2
     -- Significado de los estados:
     -- Estado S0: rojo/verde/rojo/rojo PERMITE PULSADORES
     -- Estado S0i: rojo/verde/rojo/rojo NO PERMITE PULSADORES
     -- Estado S1: rojo/ámbar/rojo/rojo
-    -- Estado S2: rojo/rojo/rojo/rojo (estado coincidente con reset)
+    -- Estado S2: rojo/rojo/rojo/rojo (Corresponde al proceso de S1->S2a->S3)
+    -- Estado S2b : rojo/rojo/rojo/rojo (Corresponde al proceso de S4->S2b->S0)
     -- Estado S3: verde/rojo/rojo/rojo PERMITE PULSADORES
     -- Estado S3i: verde/rojo/rojo/rojo NO PERMITE PULSADORES
     -- Estado S4: ámbar/rojo/rojo/rojo
     -- Estado S5: verde/rojo/rojo/verde
     -- Estado s5i: verde/rojo/rojo/parpadeo verde
 	-- Estado S6: rojo/verde/verde/rojo
-	-- Estado s6i: rojo/verde/parpadeo verde/rojo
+	-- Estado S6i: rojo/verde/parpadeo verde/rojo
+	-- Estado SR: estado de reset (todo rojo)
     
-    process(all) -- DUDA: parece que solo habría que incluir
+    process(all) -- DUDA: solo para VHDL 2008. Queda pendiente aclarar la lista de sensibilidad.
     begin
     	case actual is
         	when S0 => 
@@ -128,19 +130,17 @@ begin
             	sal <= "0010100101";
             	max1 <= "11100"; -- ASIGNAR UN VALOR DE TIEMPO
                 if max1 = tiempo1 then -- Tiempo ámbar 2
-                	prox <= S2;
+                	prox <= S2a;
                 else
                 	prox <= S1;
                 end if;
-           when S2 =>
+           when S2a =>
             	sal <= "0010010101";
             	max1 <= "11100"; --ASIGNAR UN VALOR
-                if sensor = '0' and (p2a = '0' or p2b = '0') and max1 = tiempo1 then -- TIEMPO TODO ROJO --No entiendo por que aqui pulsadores
-                	prox <= S0;
-                elsif sensor = '1' and max1 = tiempo1 then -- TIEMPO TODO ROJO
+                if max1 = tiempo1 then -- TIEMPO TODO ROJO --Antes la condición implicaba también a p2a y p2b. No deberían ser necesarios pero lo apunto por si falla.
                 	prox <= S3;
                 else
-                	prox <= S2;
+                	prox <= S2a;
                 end if;
             when S3 =>
             	sal <= "1000010101";
@@ -157,9 +157,17 @@ begin
             	sal <= "0100010101";
             	max1 <= "11100"; --ASIGNAR UN VALOR
                 if max1 = tiempo1 then -- TIEMPO ÁMBAR
-                	prox <= S2;
+                	prox <= S2b;
                 else
                 	prox <= S4;
+                end if;
+            when S2b =>
+            	sal <= "0010010101";
+            	max1 <= "11100"; --ASIGNAR UN VALOR
+                if max1 = tiempo1 then -- TIEMPO TODO ROJO --Antes la condición implicaba también a p2a y p2b. No deberían ser necesarios pero lo apunto por si falla.
+                	prox <= S0;
+                else
+                	prox <= S2b;
                 end if;
             when S5 =>
             	sal <= "1000010110";
@@ -218,6 +226,13 @@ begin
                 else
                 	prox <= S3i;
                 end if;
+            when SR =>
+                sal <= "0010010101";
+                if reset = '0' then
+                    prox <= S0;
+                else
+                    prox <= SR;
+                end if;  
     	end case;
     end process Combinacional;
 end architecture Estados;
