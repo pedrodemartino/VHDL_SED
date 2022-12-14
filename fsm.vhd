@@ -3,6 +3,11 @@ USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_arith.ALL;
 USE ieee.std_logic_unsigned.ALL;
 
+-- DUDAS y COSAS POR HACER:
+-- Reset?
+-- Asignar tiempos 
+-- Lo de la WIDTH del counter
+
 entity fsm is
 	port(
       clk    : in std_logic;
@@ -10,10 +15,10 @@ entity fsm is
       sensor : in std_logic;
       --p1     : in std_logic;
       --p2     : in std_logic;
-      p1a:    in std_logic;
-      p1b:    in std_logic;
-      p2a:	in std_logic;
-      p2b:	in std_logic;
+      p1a    : in std_logic;
+      p1b    : in std_logic;
+      p2a    : in std_logic;
+      p2b    : in std_logic;
       sal    : out std_logic_vector (9 downto 0)
       );
 end entity fsm;
@@ -27,7 +32,7 @@ port(
  CLK : in std_logic; -- Entra el clock que sale del counter
  RESET_N : in std_logic;
  MAX : in std_logic_vector (4 downto 0); -- Hasta cuanto queremos que nos cuente. --WHIDTH!!!!!!!
- COUT : out std_logic_VECTOR (4 downto 0) -- Avisa de cuando termina la cuenta de tiempo --WIDTH TAMBBIEN!!!!!!
+ COUT : out std_logic_VECTOR (4 downto 0) -- Avisa de cuando termina la cuenta de tiempo --WIDTH TAMBIEN!!!!!!
  );
 end component;
 
@@ -40,7 +45,7 @@ end component;
 
 --DECLARACIÓN DE ESTADOS (Y SUS SEÑALES)
 
-type estado is (S0,S1,S2,S3,S4,S5,S5i,S6,S6i);
+type estado is (S0,S0i,S1,S2,S3,S3i,S4,S5,S5i,S6,S6i);
     signal actual : Estados;
     signal prox : Estados;
     
@@ -95,31 +100,27 @@ begin
     -- Rural/Carretera/Peatón_Rural/Peatón_Carretera
     -- Semáforo1/Semáforo2/SemáforoPeatones1/SemáforoPeatones2
     -- Significado de los estados:
-    -- Estado S0: rojo/verde/rojo/rojo
+    -- Estado S0: rojo/verde/rojo/rojo PERMITE PULSADORES
+    -- Estado S0i: rojo/verde/rojo/rojo NO PERMITE PULSADORES
     -- Estado S1: rojo/ámbar/rojo/rojo
     -- Estado S2: rojo/rojo/rojo/rojo (estado coincidente con reset)
-    -- Estado S3: verde/rojo/rojo/rojo
+    -- Estado S3: verde/rojo/rojo/rojo PERMITE PULSADORES
+    -- Estado S3i: verde/rojo/rojo/rojo NO PERMITE PULSADORES
     -- Estado S4: ámbar/rojo/rojo/rojo
-    -- Estado S5: rojo/rojo/rojo/verde
-    -- Estado S5i: rojo/rojo/rojo/parpadeo verde
-    -- Estado S6: verde/rojo/rojo/verde
-    -- Estado s6i: verde/rojo/rojo/parpadeo verde
-	-- Estado S7: rojo/rojo/verde/rojo
-	-- Estado s7i: rojo/rojo/parpadeo verde/rojo
-	-- Estado S8: rojo/verde/verde/rojo
-	-- Estado s8i: rojo/verde/parpadeo verde/rojo
+    -- Estado S5: verde/rojo/rojo/verde
+    -- Estado s5i: verde/rojo/rojo/parpadeo verde
+	-- Estado S6: rojo/verde/verde/rojo
+	-- Estado s6i: rojo/verde/parpadeo verde/rojo
     
-    
-    --OJO FALTA IMPLEMENTAR BIEN LOS TEMPORIZADORES T1 y T2: T1 el corto, T2 el largo, lo he indicado con '--'
-    process(all)
+    process(all) -- DUDA: parece que solo habría que incluir
     begin
     	case actual is
         	when S0 => 
             	sal <= "0011000101";
-            	max2 <= "11100"; -- ASIGNAR UN VALOR DE TIEMPO
-                if sensor = '1' or p2 = '1' then
+            	max2 <= "11100"; -- ASIGNAR UN VALOR DE TIEMPO --Nos da igual si usar el contador 1 o 2 pues aqui no hay cuentas simultáneas
+                if sensor = '1' or (p2a = '1' or p2b = '0') then
                     prox <= S1;
-                elsif p1 = '1' and max2 = tiempo2 then -- TIEMPO ROJO EXTRA
+                elsif (p1a = '1' or p1b = '1') and max2 = tiempo2 then -- TIEMPO ROJO EXTRA
                 	prox <= S6;
                 else prox <= S0;
                 end if;
@@ -134,10 +135,10 @@ begin
            when S2 =>
             	sal <= "0010010101";
             	max1 <= "11100"; --ASIGNAR UN VALOR
-                if sensor = '0' and p2 = '0' and max1 = tiempo1 then -- TIEMPO TODO ROJO
+                if sensor = '0' and (p2a = '0' or p2b = '0') and max1 = tiempo1 then -- TIEMPO TODO ROJO --No entiendo por que aqui pulsadores
                 	prox <= S0;
                 elsif sensor = '1' and max1 = tiempo1 then -- TIEMPO TODO ROJO
-                	prox = S3;
+                	prox <= S3;
                 else
                 	prox <= S2;
                 end if;
@@ -145,7 +146,7 @@ begin
             	sal <= "1000010101";
             	max1 <= "11100"; --ASIGNAR UN VALOR
             	max2 <= "11100"; --ASIGNAR UN VALOR
-                if p2 = '1' and max2 = tiempo2 then -- TIEMPO ROJO EXTRA
+                if (p2a = '1' or p2b = '1') and max2 = tiempo2 then -- TIEMPO ROJO EXTRA
                 	prox <= S5;
                 elsif max1 = tiempo1 then -- TIEMPO VERDE SEMAFORO 1
                 	prox <= S4;
@@ -177,11 +178,12 @@ begin
                     sal <= "1000010110"; -- SP1 rojo, SP2 verde encendido
                 end if;
                 end loop;
-                if max2 = tiempo2 then -- TIEMPO ÁMBAR
-                    prox <= S3;
+                if max2 = tiempo2 then -- TIEMPO PARPADEO
+                    prox <= S3i;
                 else
                     prox <= S5i;
-             when S6 =>
+                end if;
+            when S6 =>
             	sal <= "0011001001";
             	max2 <= "11100"; -- ASIGNAR UN VALOR DE TIEMPO
                 if max2 = tiempo2 then -- TIEMPO EN VERDE HASTA INTERMITENTE
@@ -198,10 +200,23 @@ begin
                     sal <= "0011001001"; -- SP1 verde encendido, SP2 actual
                 end if;
                 end loop;
-                if max2 = tiempo2 then -- TIEMPO ÁMBAR
-                    prox <= S0;
+                if max2 = tiempo2 then -- TIEMPO PARPADEO
+                    prox <= S0i;
                 else
                     prox <= S6i;
+                end if;
+            when S0i =>
+                sal <= "0011000101";
+                if sensor = '1' or (p2a = '1' or p2b = '0') then
+                    prox <= S1;
+                else prox <= S0i;
+                end if;
+            when S3i =>
+            	sal <= "1000010101";
+                if max1 = tiempo1 then -- TIEMPO VERDE SEMAFORO 1
+                	prox <= S4;
+                else
+                	prox <= S3i;
                 end if;
     	end case;
     end process Combinacional;
