@@ -83,7 +83,7 @@ begin
  --PROCESOS
 
     Secuencial:
-    	process(clk);
+    	process(clk)
         begin
         if rising_edge (clk) then
           if reset = '1' then
