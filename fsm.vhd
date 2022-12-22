@@ -65,6 +65,7 @@ type Estados is (S0,S0i,S1,S2a,S2b,S3,S3i,S4,S5,S5i,S6,S6i,SR);
     signal max2 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
     signal p1: std_logic;
     signal p2: std_logic;
+    signal sen: std_logic;
     
 
 begin
@@ -141,8 +142,11 @@ begin
                     prox <= S1;
                     max2aux := "00000000";
                     max1aux := "00010100";
+                    sen <= '0';
                 elsif p1 = '1' and max2 = tiempo2 then -- TIEMPO ROJO EXTRA
                 	prox <= S6;
+                	max1aux := "00000000";
+            	    max2aux := "00101000"; -- 40 segundos
                 else prox <= S0;
                 end if;
             when S1 =>
@@ -171,12 +175,12 @@ begin
                 end if;
             when S3 =>
             	sal <= "1000010101";
-            	max1aux := "00001010"; -- 5 segundos
-            	max2aux := "01100100"; -- 100 segundos
+            	max2aux := "00001010"; -- 5 segundos
+            	max1aux := "01100100"; -- 100 segundos
                 if (p2 = '1' and max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO ROJO EXTRA
                 	prox <= S5;
-                	max1aux := "00000000";
-            	    max2aux := "00101000"; -- 40 segundos
+                	max1aux := "00000000"; 
+            	    max2aux := "00000000"; -- 40 segundos
                 elsif (max1 = tiempo1) and falling_edge(CLKOUT)  then -- TIEMPO VERDE SEMAFORO 1
                 	prox <= S4;
                 	max1aux := "00010100"; -- 10 segundos
@@ -207,7 +211,7 @@ begin
             when S5 =>
             	sal <= "1000010110";
             	max1aux := "00000000";
-            	max2aux := "00101000"; -- 40 segundos
+            	max2aux := "01010000"; -- 40 segundos
                 if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO VERDE ANTES DE INTERMITENTE
                 	prox <= S5i;
                 else
@@ -240,13 +244,11 @@ begin
             when S6i =>
                 max1aux := "00000000";
                 max2aux := "00001010"; -- 5 segundos
-                while (tiempo2 < max2) loop
                 if tiempo2(0) = '0' then
                     sal <= "0011000001"; -- SP1 todo apagado, SP2 actual
                 else
                     sal <= "0011001001"; -- SP1 verde encendido, SP2 actual
                 end if;
-                end loop;
                 if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO PARPADEO
                     prox <= S0i;
                 else
@@ -289,8 +291,8 @@ begin
     
     simplificacion_entradas:process(p1a,p1b,p2a,p2b)
     begin
-        p1 <= p1a or p1b;
-        p2 <= p2a or p2b;
+       p1 <= p1a or p1b;
+       p2 <= p2a or p2b;  
     end process;
      
 end architecture Estados;
