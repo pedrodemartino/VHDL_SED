@@ -23,7 +23,10 @@ entity fsm is
       sal    : out std_logic_vector (9 downto 0);
       t1    : out std_logic_vector (7 downto 0);
       t2    : out std_logic_vector (7 downto 0);
-      m2     : out std_logic_vector (7 downto 0)
+      m2     : out std_logic_vector (7 downto 0);
+      p1_out : out std_logic;
+      p2_out : out std_logic;
+      s_out : out std_logic
       );
 end entity fsm;
 
@@ -50,23 +53,23 @@ end component;
 --     );
 --end component;
 
---DECLARACIÃ“N DE ESTADOS (Y SUS SEÃ‘ALES)
+--DECLARACIÃ"N DE ESTADOS (Y SUS SEÃ'ALES)
 
 type Estados is (S0,S0i,S1,S2a,S2b,S3,S3i,S4,S5,S5i,S6,S6i,SR);
     signal actual : Estados;
     signal prox : Estados;
-    
---DECLARACIÃ“N DE SEÃ‘ALES 
+
+--DECLARACIÃ"N DE SEÃ'ALES 
 
     --signal clk_s : std_logic;
     signal tiempo1 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
     signal tiempo2 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
     signal max1 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
     signal max2 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
-    signal p1: std_logic;
-    signal p2: std_logic;
-    signal sen: std_logic;
-    
+    signal p1: boolean;
+    signal p2: boolean;
+    signal s: boolean;
+    signal salaux: std_logic_vector (9 downto 0);
 
 begin
     
@@ -97,13 +100,56 @@ begin
     	process(clk)
         begin
         if rising_edge (clk) then
+        
           if reset = '1' then
               actual <= SR; -- Hemos establecido un estado de reset SR
           else
               actual <= prox;
           end if;
-        end if;
+          
+	    end if;
     end process Secuencial;
+    
+    Pulsadores:
+    process(clk,sensor,p1a,p1b,p2a,p2b,actual)
+        variable p1_v : std_logic := '0';
+    	variable p2_v : std_logic := '0';
+    	variable s_v : std_logic := '0';
+        begin
+        if clk'event and clk = '1' then          
+	      if sensor = '1' then
+	           s_v := '1';
+	           s <= true;
+	      elsif actual = S1 then
+	           s_v := '0';
+	           s <= false;
+	            
+	      end if;
+	      if p1a = '1' or p1b = '1' then
+	           p1_v := '1';
+	           p1 <= true;
+	      elsif actual = S6 then
+	           p1_v := '0';
+	           p1 <= false;
+	           
+	      end if;
+	      if p2a = '1' or p2b = '1' then
+	           p2_v := '1';
+	           p2 <= true;
+	       elsif actual = S5 then
+	           p2_v := '0';
+	           p2 <= false;
+	      end if;  
+	      
+	    --p1 <= p1_v;
+        --p2 <= p2_v;
+        --s <= s_v;
+        p1_out <=  p1_v;
+        p2_out <= p2_v;
+        s_out <= s_v;
+	    end if;
+	    
+    end process Pulsadores;
     
     Combinacional:
     -- Para coches: Rojo: 001, Ã?mbar: 010, Verde: 100
@@ -125,12 +171,14 @@ begin
 	-- Estado S6i: rojo/verde/parpadeo verde/rojo
 	-- Estado SR: estado de reset (todo rojo)
     
-    process(clk,p1,p2,tiempo1,tiempo2,sensor) -- DUDA: solo para VHDL 2008. Queda pendiente aclarar la lista de sensibilidad.
+    process(clk,CLKOUT,p2,tiempo1,tiempo2,s) -- DUDA: solo para VHDL 2008. Queda pendiente aclarar la lista de sensibilidad.
     -- t1 y t2 no se si es necesario
     variable max2aux: std_logic_vector (7 downto 0);
     variable max1aux: std_logic_vector (7 downto 0);
+    --variable p2aux: boolean:=true;
     begin
-        
+        if (clkout'event and clkout = '0') then
+
     	case actual is
         	when S0 => 
             	sal <= "0011000101";
@@ -138,22 +186,20 @@ begin
                 max1aux := "00000000";
                 --max2 <= "0001010";
     	        --m2 <= "0001010";
-                if (sensor = '1' or p2 = '1') and falling_edge(CLKOUT) then
+                if (p1 = true) and max2 = tiempo2 then -- TIEMPO ROJO EXTRA       	
+		          prox <= S6;
+		        elsif (s = true) or (p2 = true) then
                     prox <= S1;
                     max2aux := "00000000";
                     max1aux := "00010100";
-                    sen <= '0';
-                elsif p1 = '1' and max2 = tiempo2 then -- TIEMPO ROJO EXTRA
-                	prox <= S6;
-                	max1aux := "00000000";
-            	    max2aux := "00101000"; -- 40 segundos
                 else prox <= S0;
                 end if;
             when S1 =>
             	sal <= "0010100101";
             	max1aux := "00010100"; -- 10 segundos
             	max2aux := "00000000";
-                if (max1 = tiempo1) and falling_edge(CLKOUT) then -- Tiempo ambar 2
+		        --s <= false;
+                if (max1 = tiempo1) then -- Tiempo ambar 2
                 	prox <= S2a;
                 	max2aux := "00000000";
                 	max1aux := "00001010"; -- 5 segundos
@@ -162,117 +208,107 @@ begin
                 end if;
            when S2a =>
             	sal <= "0010010101";
-            	--max1aux := "0001010"; -- 5 segundos
-            	--max2aux := "1111111";
-                if (max1 = tiempo1) and falling_edge(CLKOUT) then -- TIEMPO TODO ROJO --Antes la condiciÃ³n implicaba tambiÃ©n a p2a y p2b. No deberÃ­an ser necesarios pero lo apunto por si falla.
-                	prox <= S3;
-                	--max2 <= "1111111";
-                	--max1aux := "1111111";    	
+            	max1aux := "00001010"; -- 5 segundos
+            	max2aux := "00000000";
+                if (max1 = tiempo1) then -- TIEMPO TODO ROJO --Antes la condiciÃ³n implicaba tambiÃ©n a p2a y p2b. No deberÃ­an ser necesarios pero lo apunto por si falla.                	prox <= S3;
+                	prox <= S3;  	
                 	max1aux := "00001010"; -- 5 segundos
             	    max2aux := "01100100"; -- 100 segundos
                 else
                 	prox <= S2a;
                 end if;
-            when S3 =>
+                
+           when S3 =>
             	sal <= "1000010101";
             	max2aux := "00001010"; -- 5 segundos
             	max1aux := "01100100"; -- 100 segundos
-                if (p2 = '1' and max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO ROJO EXTRA
+                if (max2 = tiempo2) and (p2 = true) then-- TIEMPO ROJO EXTRA
                 	prox <= S5;
-                	max1aux := "00000000"; 
-            	    max2aux := "00000000"; -- 40 segundos
-                elsif (max1 = tiempo1) and falling_edge(CLKOUT)  then -- TIEMPO VERDE SEMAFORO 1
+                	max1aux := "00000000";
+            	    max2aux := "00101000"; -- 40 segundos
+                elsif (max1 = tiempo1) then -- TIEMPO VERDE SEMAFORO 1
                 	prox <= S4;
                 	max1aux := "00010100"; -- 10 segundos
-            	    max2aux := "00000000";
+            	        max2aux := "00000000";
                 else
                 	prox <= S3;
                 end if;
-            when S4 =>
+           when S4 =>
             	sal <= "0100010101";
             	max1aux := "00010100"; -- 10 segundos
             	max2aux := "00000000";
-                if (max1 = tiempo1) and falling_edge(CLKOUT)  then -- TIEMPO Ã?MBAR
+                if (max1 = tiempo1) then -- TIEMPO Ã?MBAR
                 	prox <= S2b;
                 else
                 	prox <= S4;
                 end if;
-            when S2b =>
+           when S2b =>
             	sal <= "0010010101";
-            	max1aux := "00010100"; -- 10 segundos
+            	max1aux := "00001010"; -- 5 segundos
             	max2aux := "00000000";
-                if (max1 = tiempo1) and falling_edge(CLKOUT) then -- TIEMPO TODO ROJO --Antes la condiciÃ³n implicaba tambiÃ©n a p2a y p2b. No deberÃ­an ser necesarios pero lo apunto por si falla.
+                if (max1 = tiempo1) then -- TIEMPO TODO ROJO --Antes la condiciÃ³n implicaba tambiÃ©n a p2a y p2b. No deberÃ­an ser necesarios pero lo apunto por si falla.
                 	prox <= S0;
                 	max1aux := "00000000";
                 	max2aux := "00001010";
                 else
                 	prox <= S2b;
                 end if;
-            when S5 =>
+           when S5 =>
             	sal <= "1000010110";
             	max1aux := "00000000";
             	max2aux := "01010000"; -- 40 segundos
-                if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO VERDE ANTES DE INTERMITENTE
+		        --reseteo el estado asociado al pulsador para una próxima detección
+                if (max2 = tiempo2) then -- TIEMPO VERDE ANTES DE INTERMITENTE
                 	prox <= S5i;
                 else
                 	prox <= S5;
                 end if;
-            when S5i =>
+           when S5i =>
                 max2aux := "00001010"; -- 5 segundos
                 max1aux := "00000000";
-                while (tiempo2 < max2) loop
-                if tiempo2(0) = '0' then
-                    sal <= "1000010100"; -- SP1 rojo, SP2 todo apagado
-                else
-                    sal <= "1000010110"; -- SP1 rojo, SP2 verde encendido
-                end if;
-                end loop;
-                if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO PARPADEO
+                sal <= "1111111111";
+                if (max2 = tiempo2) then -- TIEMPO PARPADEO
                     prox <= S3i;
                 else
                     prox <= S5i;
                 end if;
-            when S6 =>
+           when S6 =>
             	sal <= "0011001001";
             	max1aux := "00000000";
-            	max2aux := "00101000"; -- 40 segundos
-                if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO EN VERDE HASTA INTERMITENTE
+            	max2aux := "01010000"; -- 40 segundos
+		        --p1 <= false; --reseteo el estado asociado al pulsador para una próxima detección
+                if (max2 = tiempo2) then -- TIEMPO EN VERDE HASTA INTERMITENTE
                 	prox <= S6i;
                 else
                 	prox <= S6;
                 end if;
-            when S6i =>
+           when S6i =>
                 max1aux := "00000000";
                 max2aux := "00001010"; -- 5 segundos
-                if tiempo2(0) = '0' then
-                    sal <= "0011000001"; -- SP1 todo apagado, SP2 actual
-                else
-                    sal <= "0011001001"; -- SP1 verde encendido, SP2 actual
-                end if;
-                if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO PARPADEO
+                sal <= "1111111111";
+                if (max2 = tiempo2) then -- TIEMPO PARPADEO
                     prox <= S0i;
                 else
                     prox <= S6i;
                 end if;
-            when S0i =>
+           when S0i =>
                 max1aux := "00000000";
                 max2aux := "00000000"; 
                 sal <= "0011000101";
-                
-                if sensor = '1' or p2 = '1' then
+                if (s = true) or (p2 = true) then 
                     prox <= S1;
                 else prox <= S0i;
                 end if;
-            when S3i =>
+           when S3i =>
             	sal <= "1000010101";
             	max1aux := "00000000";
-            	max2aux := "01111111"; --poner 100 segundos
-                if (max1 = tiempo1) and falling_edge(CLKOUT) then -- TIEMPO VERDE SEMAFORO 1
+            	max2aux := "01100100"; --poner 100 segundos
+                if (max1 = tiempo1) then -- TIEMPO VERDE SEMAFORO 1
                 	prox <= S4;
                 else
                 	prox <= S3i;
                 end if;
-            when SR =>
+           when SR =>
                 max1aux := "00000000";
             	max2aux := "00000000";
                 sal <= "0010010101";
@@ -282,17 +318,18 @@ begin
                     prox <= SR;
                 end if;  
     	end case;
+    	
     	max2 <= max2aux;
     	m2 <= max2aux;
     	max1 <= max1aux;
     	t1 <= tiempo1;
     	t2 <= tiempo2;
+    	--p1_out <= p1;
+    	--p2_out <= p2;	
+    	--s_out <= s;
+    	--end if;
+    	end if;
     end process Combinacional;
-    
-    simplificacion_entradas:process(p1a,p1b,p2a,p2b)
-    begin
-       p1 <= p1a or p1b;
-       p2 <= p2a or p2b;  
-    end process;
+        
      
-end architecture Estados;
+end architecture Estados
