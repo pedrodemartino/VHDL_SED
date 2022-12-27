@@ -37,10 +37,13 @@ y se abrirá automáticamente.
 
 ## Adición de nuevos ficheros
 
-Vivado insistirá en crear los nuevos ficheros en su estructura de directorios.
-No nos interesa. En mejor crear ficheros vacíos en src/ con el explorador,
-incorporarlos al proyecto (vigilar que no esté marcada "Copy to project") y
-luego ya editarlos en Vivado.
+Vivado insistirá en crear los nuevos ficheros de VHDL en su estructura de
+directorios. No nos interesa. En mejor crear ficheros vacíos en src/ con el
+explorador, incorporarlos al proyecto (vigilar que no esté marcada "Copy to
+project") y luego ya editarlos en Vivado.
+
+Depués, no olvidar regenerar el fichero Tcl con : "File" -> "Project" -> "Write Tcl...". Asegurarse
+de nuevo de que no esté marcada la opción "Copy to project".
 
 ## Estados
 ![Diagrama de estados](/assets/images/Estados.jpg)
