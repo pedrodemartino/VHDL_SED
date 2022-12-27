@@ -41,3 +41,6 @@ Vivado insistirá en crear los nuevos ficheros en su estructura de directorios.
 No nos interesa. En mejor crear ficheros vacíos en src/ con el explorador,
 incorporarlos al proyecto (vigilar que no esté marcada "Copy to project") y
 luego ya editarlos en Vivado.
+
+## Estados
+![Diagrama de estados](/images/Estados.jpg)
