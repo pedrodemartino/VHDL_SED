@@ -1,298 +1,235 @@
-LIBRARY ieee;
-USE ieee.std_logic_1164.ALL;
-USE ieee.std_logic_arith.ALL;
-USE ieee.std_logic_unsigned.ALL;
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 -- DUDAS y COSAS POR HACER:
--- Asignar tiempos: El valor de los tiempos se da en binario, siendo el nÃºmero de flancos de reloj que representa ese tiempo.
+-- Asignar tiempos: El valor de los tiempos se da en binario, siendo el n�mero de flancos de reloj que representa ese tiempo.
 -- Lo del WIDTH del counter
--- Aclarar lÃ­sta de sensibilidad
+-- Aclarar lista de sensibilidad
 
-entity fsm is
-	port(
-      clk    : in std_logic;
-      reset  : in std_logic; --todo a rojo, estado SR
-      sensor : in std_logic;
-      CLKOUT : in std_logic;
-      --p1     : in std_logic;
-      --p2     : in std_logic;
-      p1a    : in std_logic;
-      p1b    : in std_logic;
-      p2a    : in std_logic;
-      p2b    : in std_logic;
-      sal    : out std_logic_vector (9 downto 0);
-      t1    : out std_logic_vector (7 downto 0);
-      t2    : out std_logic_vector (7 downto 0);
-      m2     : out std_logic_vector (7 downto 0)
-      );
-end entity fsm;
-
-architecture Estados of fsm is
-
--- DECLARACION DE COMPONENTES
-
-component COUNTER -- Contador con precarga (usaremos 2 porque en algÃºn momento hay que tomar dos tiempos simultaneos)
-    generic(
-            WIDTH : positive :=8 -- de esta manera podemos contar hasta 2 a la 5
-        );
+entity FSM is
     port(
-     CLKOUT : in std_logic; -- Entra el clock que sale del counter
-     RESET : in std_logic;
-     MAX : in std_logic_vector (WIDTH-1 downto 0); -- Hasta cuanto queremos que nos cuente. --WHIDTH!!!!!!!
-     COUT : out std_logic_VECTOR (WIDTH-1 downto 0) -- Avisa de cuando termina la cuenta de tiempo --WIDTH TAMBIEN!!!!!!
-     );
-end component;
+        CLK     : in std_logic;
+        RESET_N : in std_logic; --todo a rojo, estado SR
+        SENSOR  : in std_logic;
+        P1      : in std_logic;
+        P2      : in std_logic;
+        SAL     : out std_logic_vector (9 downto 0)
+    );
+end entity FSM;
 
---component PREESCALER
---    port(
---     CLK100MHZ : in std_logic; -- Reloj normal de entrada
---     CLKOUT : out std_logic -- Reloj con frecuencia adecuada
---     );
---end component;
+architecture BEHAVIORAL of FSM is
 
---DECLARACIÃ“N DE ESTADOS (Y SUS SEÃ‘ALES)
+    constant COUNTER_WIDTH : positive := 10;  -- Capacidad hasta 102,4 s (reloj 10Hz)
 
-type Estados is (S0,S0i,S1,S2a,S2b,S3,S3i,S4,S5,S5i,S6,S6i,SR);
+    -- DECLARACION DE COMPONENTES
+    component COUNTER
+        generic(
+            WIDTH   : positive
+        );
+        port(
+            CLK     : in  std_logic; -- Entra el clock que sale del counter
+            RESET_N : in  std_logic;
+            MAX     : in  unsigned(WIDTH - 1 downto 0);
+            COUT    : out unsigned(WIDTH - 1 downto 0)
+        );
+    end component;
+
+    -- DECLARACI�N DE ESTADOS (Y SUS SE�ALES)
+    type Estados is (S0, S0I, S1, S2A, S2B, S3, S3I, S4, S5, S5I, S6, S6I, SR);
     signal actual : Estados;
-    signal prox : Estados;
-    
---DECLARACIÃ“N DE SEÃ‘ALES 
+    signal prox   : Estados;
 
-    --signal clk_s : std_logic;
-    signal tiempo1 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
-    signal tiempo2 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
-    signal max1 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
-    signal max2 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
-    signal p1: std_logic;
-    signal p2: std_logic;
-    signal sen: std_logic;
-    
+    -- DECLARACI�N DE SE�ALES
+    signal tiempo1 : unsigned(COUNTER_WIDTH - 1 downto 0);
+    signal tiempo2 : unsigned(COUNTER_WIDTH - 1 downto 0);
+    signal max1    : unsigned(COUNTER_WIDTH - 1 downto 0);
+    signal max2    : unsigned(COUNTER_WIDTH - 1 downto 0);
+    signal sen     : std_logic;
 
 begin
-    
---INSTANCIACION DE COMPONENTES
-    --
-    --Inst_PREESCALER : PREESCALER port map(
-    --CLK100MHZ => clk, -- Entra el reloj normal
-    --CLKOUT => clk_s-- Sale el reloj con la frecuencia correspondiente
-    --);
-    
-    Inst_COUNTER_1 : COUNTER port map(
-    MAX => max1, -- Entra la precarga que recibe desde fsm
-    RESET => reset,
-	CLKOUT => CLKOUT,
-	COUT => tiempo1 -- Devuelve el tiempo que lleva
-    );
-    
-    Inst_COUNTER_2 : COUNTER port map(
-    MAX => max2, -- Entra la precarga que recibe desde fsm
-    RESET => reset,
-	CLKOUT => CLKOUT,
-	COUT => tiempo2 -- Devuelve el tiempo que lleva
-    );
-    
- --PROCESOS
+    --INSTANCIACION DE COMPONENTES
+    counter1: COUNTER
+        generic map(
+            WIDTH   => COUNTER_WIDTH
+        )
+        port map(
+            CLK     => CLK,
+            RESET_N => RESET_N,
+            MAX     => max1,
+            COUT    => tiempo1
+        );
 
-    Secuencial:
-    	process(clk)
-        begin
-        if rising_edge (clk) then
-          if reset = '1' then
-              actual <= SR; -- Hemos establecido un estado de reset SR
-          else
-              actual <= prox;
-          end if;
+    counter2: COUNTER
+        generic map(
+            WIDTH   => COUNTER_WIDTH
+        )
+        port map(
+            CLK     => CLK,
+            RESET_N => RESET_N,
+            MAX     => max2,
+            COUT    => tiempo2
+        );
+
+    --PROCESOS
+    reg_estado: process(CLK)
+    begin
+        if rising_edge(CLK) then
+            if RESET_N = '0' then
+                actual <= SR; -- Hemos establecido un estado de reset SR
+            else
+                actual <= prox;
+            end if;
         end if;
-    end process Secuencial;
-    
-    Combinacional:
-    -- Para coches: Rojo: 001, Ã?mbar: 010, Verde: 100
+    end process reg_estado;
+
+    -- Para coches: Rojo: 001, �mbar: 010, Verde: 100
     -- Para peatones: Rojo: 01, Verde: 10, Apagado (para el parpadeo): 00
-    -- Rural/Carretera/PeatÃ³n_Rural/PeatÃ³n_Carretera
-    -- SemÃ¡foro1/SemÃ¡foro2/SemÃ¡foroPeatones1/SemÃ¡foroPeatones2
+    -- Rural/Carretera/Peat�n_Rural/Peat�n_Carretera
+    -- Sem�foro1/Sem�foro2/Sem�foroPeatones1/Sem�foroPeatones2
     -- Significado de los estados:
     -- Estado S0: rojo/verde/rojo/rojo PERMITE PULSADORES
     -- Estado S0i: rojo/verde/rojo/rojo NO PERMITE PULSADORES
-    -- Estado S1: rojo/Ã¡mbar/rojo/rojo
+    -- Estado S1: rojo/�mbar/rojo/rojo
     -- Estado S2: rojo/rojo/rojo/rojo (Corresponde al proceso de S1->S2a->S3)
     -- Estado S2b : rojo/rojo/rojo/rojo (Corresponde al proceso de S4->S2b->S0)
     -- Estado S3: verde/rojo/rojo/rojo PERMITE PULSADORES
     -- Estado S3i: verde/rojo/rojo/rojo NO PERMITE PULSADORES
-    -- Estado S4: Ã¡mbar/rojo/rojo/rojo
+    -- Estado S4: �mbar/rojo/rojo/rojo
     -- Estado S5: verde/rojo/rojo/verde
     -- Estado s5i: verde/rojo/rojo/parpadeo verde
-	-- Estado S6: rojo/verde/verde/rojo
-	-- Estado S6i: rojo/verde/parpadeo verde/rojo
-	-- Estado SR: estado de reset (todo rojo)
-    
-    process(clk,p1,p2,tiempo1,tiempo2,sensor) -- DUDA: solo para VHDL 2008. Queda pendiente aclarar la lista de sensibilidad.
-    -- t1 y t2 no se si es necesario
-    variable max2aux: std_logic_vector (7 downto 0);
-    variable max1aux: std_logic_vector (7 downto 0);
+    -- Estado S6: rojo/verde/verde/rojo
+    -- Estado S6i: rojo/verde/parpadeo verde/rojo
+    -- Estado SR: estado de reset (todo rojo)
+    decodificador: process(SENSOR, P1, P2, tiempo1, tiempo2, actual)
     begin
-        
-    	case actual is
-        	when S0 => 
-            	sal <= "0011000101";
-            	max2aux := "00001010"; -- 5 segundos --Nos da igual si usar el contador 1 o 2 pues aqui no hay cuentas simultÃ¡neas
-                max1aux := "00000000";
-                --max2 <= "0001010";
-    	        --m2 <= "0001010";
-                if (sensor = '1' or p2 = '1') and falling_edge(CLKOUT) then
+        prox <= actual;           -- Permanecer en el estado actual si no hay cambios 
+        max1 <= (others => '0');  -- Asegura counter 1 reiniciado
+        max2 <= (others => '0');  -- Asegura counter 2 reiniciado
+        SAL  <= (others => '0');  -- LEDs apagados por defecto
+
+        case actual is
+
+            when S0 =>
+                -- Estado siguiente
+                if tiempo1 = 99 then
+                    prox <=  S0i;
+                elsif sensor = '1' or p2 = '1' then
                     prox <= S1;
-                    max2aux := "00000000";
-                    max1aux := "00010100";
-                    sen <= '0';
-                elsif p1 = '1' and max2 = tiempo2 then -- TIEMPO ROJO EXTRA
-                	prox <= S6;
-                	max1aux := "00000000";
-            	    max2aux := "00101000"; -- 40 segundos
-                else prox <= S0;
+                elsif p1 = '1' then -- TIEMPO ROJO EXTRA
+                    prox <= S6;
                 end if;
+                -- Salidas
+                SAL  <= "0011000101";
+                max1 <= to_unsigned(100, max1'length);
+
             when S1 =>
-            	sal <= "0010100101";
-            	max1aux := "00010100"; -- 10 segundos
-            	max2aux := "00000000";
-                if (max1 = tiempo1) and falling_edge(CLKOUT) then -- Tiempo ambar 2
-                	prox <= S2a;
-                	max2aux := "00000000";
-                	max1aux := "00001010"; -- 5 segundos
-                else
-                	prox <= S1;
+                -- Estado siguiente
+                if tiempo2 = 199 then -- Tiempo ambar 2
+                    prox <= S2A;
                 end if;
-           when S2a =>
-            	sal <= "0010010101";
-            	--max1aux := "0001010"; -- 5 segundos
-            	--max2aux := "1111111";
-                if (max1 = tiempo1) and falling_edge(CLKOUT) then -- TIEMPO TODO ROJO --Antes la condiciÃ³n implicaba tambiÃ©n a p2a y p2b. No deberÃ­an ser necesarios pero lo apunto por si falla.
-                	prox <= S3;
-                	--max2 <= "1111111";
-                	--max1aux := "1111111";    	
-                	max1aux := "00001010"; -- 5 segundos
-            	    max2aux := "01100100"; -- 100 segundos
-                else
-                	prox <= S2a;
+                -- Salidas
+                SAL  <= "0010100101";
+                max2 <= to_unsigned(200, max2'length);
+
+            when S2A =>
+                -- Antes la condici�n implicaba tambi�n a p2a y p2b. No deber�an ser actual
+                -- pero lo apunto por si falla.
+                -- Estado siguiente
+                if tiempo1 = 49 then  -- TIEMPO TODO ROJO
+                    prox <= S3;
                 end if;
+                -- Salidas
+                SAL  <= "0010010101";
+                max1 <= to_unsigned(50, max1'length);
+
             when S3 =>
-            	sal <= "1000010101";
-            	max2aux := "00001010"; -- 5 segundos
-            	max1aux := "01100100"; -- 100 segundos
-                if (p2 = '1' and max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO ROJO EXTRA
-                	prox <= S5;
-                	max1aux := "00000000"; 
-            	    max2aux := "00000000"; -- 40 segundos
-                elsif (max1 = tiempo1) and falling_edge(CLKOUT)  then -- TIEMPO VERDE SEMAFORO 1
-                	prox <= S4;
-                	max1aux := "00010100"; -- 10 segundos
-            	    max2aux := "00000000";
-                else
-                	prox <= S3;
+                -- Estado siguiente
+                if tiempo2 = 49 then -- TIEMPO VERDE SEMAFORO 1
+                    prox <= S4;
+                elsif p2 = '1' then -- TIEMPO ROJO EXTRA
+                    prox <= S5;
                 end if;
+                -- Salidas
+                SAL  <= "1000010101";
+                max2 <= to_unsigned(50, max2'length);
+
             when S4 =>
-            	sal <= "0100010101";
-            	max1aux := "00010100"; -- 10 segundos
-            	max2aux := "00000000";
-                if (max1 = tiempo1) and falling_edge(CLKOUT)  then -- TIEMPO Ã?MBAR
-                	prox <= S2b;
-                else
-                	prox <= S4;
+                -- Estado siguiente
+                if tiempo1 = 99 then -- TIEMPO �MBAR
+                    prox <= S2B;
                 end if;
-            when S2b =>
-            	sal <= "0010010101";
-            	max1aux := "00010100"; -- 10 segundos
-            	max2aux := "00000000";
-                if (max1 = tiempo1) and falling_edge(CLKOUT) then -- TIEMPO TODO ROJO --Antes la condiciÃ³n implicaba tambiÃ©n a p2a y p2b. No deberÃ­an ser necesarios pero lo apunto por si falla.
-                	prox <= S0;
-                	max1aux := "00000000";
-                	max2aux := "00001010";
-                else
-                	prox <= S2b;
+                -- Salidas
+                SAL  <= "0100010101";
+                max1 <= to_unsigned(100, max1'length);
+
+            when S2B =>
+                -- Estado siguiente
+                if tiempo2 = 99 then -- TIEMPO TODO ROJO --Antes la condiciÃ³n implicaba tambiÃ©n a p2a y p2b. No deberÃ­an ser necesarios pero lo apunto por si falla.
+                    prox <= S0;
                 end if;
+                -- Salidas
+                SAL  <= "0010010101";
+                max2 <= to_unsigned(100, max2'length);
+
             when S5 =>
-            	sal <= "1000010110";
-            	max1aux := "00000000";
-            	max2aux := "01010000"; -- 40 segundos
-                if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO VERDE ANTES DE INTERMITENTE
-                	prox <= S5i;
-                else
-                	prox <= S5;
+                -- Estado siguiente
+                if tiempo1 = 399 then -- TIEMPO VERDE ANTES DE INTERMITENTE
+                    prox <= S5I;
                 end if;
-            when S5i =>
-                max2aux := "00001010"; -- 5 segundos
-                max1aux := "00000000";
-                while (tiempo2 < max2) loop
-                if tiempo2(0) = '0' then
-                    sal <= "1000010100"; -- SP1 rojo, SP2 todo apagado
-                else
-                    sal <= "1000010110"; -- SP1 rojo, SP2 verde encendido
+                -- Salidas
+                SAL  <= "1000010110";
+                max1 <= to_unsigned(400, max1'length);
+
+            when S5I =>
+                -- Estado siguiente
+                if tiempo2 = 49 then -- TIEMPO PARPADEO
+                    prox <= S3I;
                 end if;
-                end loop;
-                if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO PARPADEO
-                    prox <= S3i;
-                else
-                    prox <= S5i;
-                end if;
+                -- Salidas
+                sal  <= "1000010110"; -- SP1 rojo, SP2 verde encendido
+                max2 <= to_unsigned(50, max2'length);
+
             when S6 =>
-            	sal <= "0011001001";
-            	max1aux := "00000000";
-            	max2aux := "00101000"; -- 40 segundos
-                if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO EN VERDE HASTA INTERMITENTE
-                	prox <= S6i;
-                else
-                	prox <= S6;
+                -- Estado siguiente
+                if tiempo2 = 399 then -- TIEMPO EN VERDE HASTA INTERMITENTE
+                    prox <= S6I;
                 end if;
-            when S6i =>
-                max1aux := "00000000";
-                max2aux := "00001010"; -- 5 segundos
-                if tiempo2(0) = '0' then
-                    sal <= "0011000001"; -- SP1 todo apagado, SP2 actual
-                else
-                    sal <= "0011001001"; -- SP1 verde encendido, SP2 actual
+                -- Salidas
+                SAL  <= "0011001001";
+                max2 <= to_unsigned(400, max2'length);
+
+            when S6I =>
+                -- Estado siguiente
+                if tiempo1 = 49 then -- TIEMPO PARPADEO
+                    prox <= S0I;
                 end if;
-                if (max2 = tiempo2) and falling_edge(CLKOUT) then -- TIEMPO PARPADEO
-                    prox <= S0i;
-                else
-                    prox <= S6i;
-                end if;
-            when S0i =>
-                max1aux := "00000000";
-                max2aux := "00000000"; 
-                sal <= "0011000101";
-                
+                -- Salidas
+                sal  <= "0011001001"; -- SP1 verde encendido, SP2 actual
+                max1 <= to_unsigned(50, max1'length);
+
+            when S0I =>
+                -- Estado siguiente
                 if sensor = '1' or p2 = '1' then
                     prox <= S1;
-                else prox <= S0i;
                 end if;
-            when S3i =>
-            	sal <= "1000010101";
-            	max1aux := "00000000";
-            	max2aux := "01111111"; --poner 100 segundos
-                if (max1 = tiempo1) and falling_edge(CLKOUT) then -- TIEMPO VERDE SEMAFORO 1
-                	prox <= S4;
-                else
-                	prox <= S3i;
+                -- Salidas
+                sal   <= "0011000101";
+                max2 <= to_unsigned(50, max2'length);
+
+            when S3I =>
+                -- Estado siguiente
+                if tiempo1 = 999 then -- TIEMPO VERDE SEMAFORO 1
+                    prox <= S4;
                 end if;
-            when SR =>
-                max1aux := "00000000";
-            	max2aux := "00000000";
-                sal <= "0010010101";
-                if reset = '0' then
-                    prox <= S0;
-                else
-                    prox <= SR;
-                end if;  
-    	end case;
-    	max2 <= max2aux;
-    	m2 <= max2aux;
-    	max1 <= max1aux;
-    	t1 <= tiempo1;
-    	t2 <= tiempo2;
-    end process Combinacional;
-    
-    simplificacion_entradas:process(p1a,p1b,p2a,p2b)
-    begin
-       p1 <= p1a or p1b;
-       p2 <= p2a or p2b;  
-    end process;
-     
-end architecture Estados;
+                -- Salidas
+                sal  <= "1000010101";
+                max1 <= to_unsigned(1000, max1'length);
+
+            when others =>
+                prox <= S0;
+
+        end case;
+    end process decodificador;
+
+end architecture BEHAVIORAL;
