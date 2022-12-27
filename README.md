@@ -30,11 +30,10 @@ source  ./Trabajo-VHDL-SED-G1.tcl
 El proyecto se creará en la carpeta:
 
 ```
-C:\Mi_directorio_raiz\mi_subdirectorio\...\mi_proyecto\Trabajo-VHDL-SED-G1
+C:\Mi_directorio_raiz\mi_subdirectorio\...\mi_proyecto
 ```
 
-y se abrirá automáticamente. Esta carpeta no se debe incluir en el control de
-versiones.
+y se abrirá automáticamente.
 
 ## Adición de nuevos ficheros
 
