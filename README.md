@@ -17,7 +17,7 @@ C:/Users/nombre/AppData/Roaming/Xilinx/Vivado
 Normalmente no será el que queremos. Usaremos el comando:
 
 ```
-cd C:\Mi_directorio_raiz\mi_subdirectorio\...\mi_proyecto
+cd C:/Mi_directorio_raiz/mi_subdirectorio/.../mi_proyecto
 ```
 
 para ir al directorio donde he clonado mi proyecto. Una vez en el directorio
@@ -30,7 +30,7 @@ source  ./Trabajo-VHDL-SED-G1.tcl
 El proyecto se creará en la carpeta:
 
 ```
-C:\Mi_directorio_raiz\mi_subdirectorio\...\mi_proyecto
+C:/Mi_directorio_raiz/mi_subdirectorio/.../mi_proyecto
 ```
 
 y se abrirá automáticamente.
