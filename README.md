@@ -43,4 +43,4 @@ incorporarlos al proyecto (vigilar que no esté marcada "Copy to project") y
 luego ya editarlos en Vivado.
 
 ## Estados
-![Diagrama de estados](/images/Estados.jpg)
+![Diagrama de estados](/assets/images/Estados.jpg)
