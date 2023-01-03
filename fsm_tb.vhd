@@ -16,13 +16,7 @@ architecture Behavior of fsm_tb is
           p1b    : in std_logic;
           p2a    : in std_logic;
           p2b    : in std_logic;
-          sal    : out std_logic_vector (9 downto 0);         
-          t1     : out std_logic_vector (7 downto 0);
-          t2     : out std_logic_vector (7 downto 0);
-          m2     : out std_logic_vector (7 downto 0);
-          p1_out : out std_logic;
-          p2_out : out std_logic;
-          s_out : out std_logic
+          sal    : out std_logic_vector (9 downto 0)
         );
      end component;
     
@@ -35,13 +29,6 @@ architecture Behavior of fsm_tb is
      signal p2a    : std_logic;
      signal p2b    : std_logic;
      signal sal    : std_logic_vector (9 downto 0);
-     signal t1    : std_logic_vector (7 downto 0);
-     signal t2    : std_logic_vector (7 downto 0);
-     signal m2    : std_logic_vector (7 downto 0);
-     signal p1_out    : std_logic;
-     signal p2_out    : std_logic;
-     signal s_out    : std_logic;
-     
      constant k: time := 10 ns;
      
 begin
@@ -55,13 +42,7 @@ begin
         p1b => p1b,
         p2a => p2a,
         p2b => p2b,
-        sal => sal,
-        t1 => t1,
-        t2 => t2,
-        m2 =>m2,
-        p1_out => p1_out,
-        p2_out => p2_out,
-        s_out => s_out
+        sal => sal
     );
     
     clock : process
@@ -94,7 +75,7 @@ begin
          sensor <= '1';
          wait for 30 * k / 2;
          sensor <= '0';
-         wait for 2000 * k / 2;
+         wait for 20000 * k / 2;
     end process;
     
 end Behavior;
