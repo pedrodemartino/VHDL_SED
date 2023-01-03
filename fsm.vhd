@@ -9,24 +9,19 @@ USE ieee.std_logic_unsigned.ALL;
 -- Aclarar lÃ­sta de sensibilidad
 
 entity fsm is
+    generic(
+            WIDTH : positive :=8 -- de esta manera podemos contar hasta 2 a la 5
+        );
 	port(
       clk    : in std_logic;
       reset  : in std_logic; --todo a rojo, estado SR
       sensor : in std_logic;
       CLKOUT : in std_logic;
-      --p1     : in std_logic;
-      --p2     : in std_logic;
       p1a    : in std_logic;
       p1b    : in std_logic;
       p2a    : in std_logic;
       p2b    : in std_logic;
-      sal    : out std_logic_vector (9 downto 0);
-      t1    : out std_logic_vector (7 downto 0);
-      t2    : out std_logic_vector (7 downto 0);
-      m2     : out std_logic_vector (7 downto 0);
-      p1_out : out std_logic;
-      p2_out : out std_logic;
-      s_out : out std_logic
+      sal    : out std_logic_vector (9 downto 0)
       );
 end entity fsm;
 
@@ -46,13 +41,6 @@ component COUNTER -- Contador con precarga (usaremos 2 porque en algÃºn moment
      );
 end component;
 
---component PREESCALER
---    port(
---     CLK100MHZ : in std_logic; -- Reloj normal de entrada
---     CLKOUT : out std_logic -- Reloj con frecuencia adecuada
---     );
---end component;
-
 --DECLARACIÃ"N DE ESTADOS (Y SUS SEÃ'ALES)
 
 type Estados is (S0,S0i,S1,S2a,S2b,S3,S3i,S4,S5,S5i,S6,S6i,SR);
@@ -61,25 +49,22 @@ type Estados is (S0,S0i,S1,S2a,S2b,S3,S3i,S4,S5,S5i,S6,S6i,SR);
 
 --DECLARACIÃ"N DE SEÃ'ALES 
 
-    --signal clk_s : std_logic;
-    signal tiempo1 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
-    signal tiempo2 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
-    signal max1 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
-    signal max2 : std_logic_vector (7 downto 0); --Esto va con WIDTH DOWNTO 0
-    signal p1: boolean;
+    --signals para los contadores/temporizadores
+    signal tiempo1 : std_logic_vector (WIDTH-1 downto 0); 
+    signal tiempo2 : std_logic_vector (WIDTH-1 downto 0); 
+    signal max1 : std_logic_vector (WIDTH-1 downto 0); 
+    signal max2 : std_logic_vector (WIDTH-1 downto 0);
+    
+    --signals para los pulsadores
+    signal p1: boolean;  
     signal p2: boolean;
     signal s: boolean;
-    signal salaux: std_logic_vector (9 downto 0);
 
 begin
     
 --INSTANCIACION DE COMPONENTES
-    --
-    --Inst_PREESCALER : PREESCALER port map(
-    --CLK100MHZ => clk, -- Entra el reloj normal
-    --CLKOUT => clk_s-- Sale el reloj con la frecuencia correspondiente
-    --);
     
+    --instanciacion primer temporizador 
     Inst_COUNTER_1 : COUNTER port map(
     MAX => max1, -- Entra la precarga que recibe desde fsm
     RESET => reset,
@@ -87,6 +72,7 @@ begin
 	COUT => tiempo1 -- Devuelve el tiempo que lleva
     );
     
+    --instanciacion segundo temporizador 
     Inst_COUNTER_2 : COUNTER port map(
     MAX => max2, -- Entra la precarga que recibe desde fsm
     RESET => reset,
@@ -96,6 +82,7 @@ begin
     
  --PROCESOS
 
+    -- proceso asociado al reset
     Secuencial:
     	process(clk)
         begin
@@ -110,29 +97,40 @@ begin
 	    end if;
     end process Secuencial;
     
+    -- proceso asociado a la asignación de las señales en función de los pulsadores
     Pulsadores:
     process(clk,sensor,p1a,p1b,p2a,p2b,actual)
+    
         variable p1_v : std_logic := '0';
     	variable p2_v : std_logic := '0';
     	variable s_v : std_logic := '0';
+    	
         begin
-        if clk'event and clk = '1' then          
+               
+        if clk'event and clk = '1' then
+        
+          --La señal asignada al sensor se pondrá a 1 cuando se detecte el pulsador y a 0 cuando 
+          --la maquina de estados este en S1        
 	      if sensor = '1' then
 	           s_v := '1';
 	           s <= true;
 	      elsif actual = S1 then
 	           s_v := '0';
-	           s <= false;
-	            
+	           s <= false;	            
 	      end if;
+	      
+	      --La señal asignada al pilsador 1 se pondrá a 1 cuando se detecte el pulsador 1a o 1b y a 0 cuando 
+          --la maquina de estados este en S6
 	      if p1a = '1' or p1b = '1' then
 	           p1_v := '1';
 	           p1 <= true;
 	      elsif actual = S6 then
 	           p1_v := '0';
-	           p1 <= false;
-	           
+	           p1 <= false;	           
 	      end if;
+	      
+	      --La señal asignada al pilsador 2 se pondrá a 1 cuando se detecte el pulsador 2a o 2b y a 0 cuando 
+          --la maquina de estados este en S5
 	      if p2a = '1' or p2b = '1' then
 	           p2_v := '1';
 	           p2 <= true;
@@ -140,13 +138,7 @@ begin
 	           p2_v := '0';
 	           p2 <= false;
 	      end if;  
-	      
-	    --p1 <= p1_v;
-        --p2 <= p2_v;
-        --s <= s_v;
-        p1_out <=  p1_v;
-        p2_out <= p2_v;
-        s_out <= s_v;
+
 	    end if;
 	    
     end process Pulsadores;
@@ -177,7 +169,7 @@ begin
     variable max1aux: std_logic_vector (7 downto 0);
     --variable p2aux: boolean:=true;
     begin
-        if (clkout'event and clkout = '0') then
+        if (clkout'event and clkout = '1') then
 
     	case actual is
         	when S0 => 
@@ -320,16 +312,9 @@ begin
     	end case;
     	
     	max2 <= max2aux;
-    	m2 <= max2aux;
     	max1 <= max1aux;
-    	t1 <= tiempo1;
-    	t2 <= tiempo2;
-    	--p1_out <= p1;
-    	--p2_out <= p2;	
-    	--s_out <= s;
-    	--end if;
     	end if;
     end process Combinacional;
         
      
-end architecture Estados
+end architecture Estados;
