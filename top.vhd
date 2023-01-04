@@ -5,7 +5,7 @@ USE ieee.std_logic_unsigned.ALL;
 
 --DUDAS:
 -- El reset va a todos los elementos o solo a la fsm?
--- Lo de las entradas en forma de vector: ¿cómo lo traducimos a elementos físicos? Pulsadores, luces, botones...
+-- Lo de las entradas en forma de vector: Â¿cÃ³mo lo traducimos a elementos fÃ­sicos? Pulsadores, luces, botones...
 
 entity top is
     port(
@@ -13,84 +13,88 @@ entity top is
         P1B : in std_logic;
         P2A : in std_logic;
         P2B : in std_logic;
-        --P1 : in std_logic; -- Pulsador del paso de peatones 1
-        --P2 : in std_logic; -- Pulsador del paso de peatones 2
         SENSOR : in std_logic; -- Sensor de presencia de coche (carretera 1)
-        -- Seguramente haya que poner todas las entradas como UN SOLO VECTOR (para no emplear 5 elementos de cada tipo)
-        --ENTRADAS : in std_logic_vector (4 downto 0);
-        -- ENTRADAS[0] = P1A, ENTRADAS[1] = P1B, ENTRADAS[2] = P2A, ENTRADAS[3] = P2B, ENTRADAS[4] = SENSOR
         CLOCK : in std_logic;
-        RESET : in std_logic; -- Reset total(si se pulsa, todos los semáforos pasan a estar en rojo) ???
-        --SP1 : out std_logic_vector (1 downto 0); -- Semaforo peatones 1 (rojo, verde)
-        --SP2 : out std_logic_vector (1 downto 0); -- Semáforo peatones 2 (rojo, verde)
-        --S1 : out std_logic_vector (2 downto 0); -- Semáforo carretera 1 (rojo, ámbar, verde)
-        --S2 : out std_logic_vector (2 downto 0) -- Semáforo carretera 2 (rojo, ámbar, verde)
-        -- De igual manera, quizá sea conveniente establecer las salidas UN SOLO VECTOR (así lo hemos establecido en la mFSM
-        SALIDAS : in std_logic_vector (9 downto 0)
-        -- SALIDAS[0] = P1 ROJO, SALIDAS[1] = P1 ÁMBAR, SALIDAS[2] = P1 VERDE
-        -- SALIDAS[3] = P2 ROJO, SALIDAS[4] = P2 ÁMBAR, SALIDAS[5] = P2 VERDE
-        -- SALIDAS[6] = SP1 ROJO, SALIDAS[7] = SP1 VERDE
-        -- SALIDAS[8] = SP2 ROJO, SALIDAS[9] = SP2 VERDE
+        RESET : in std_logic; -- Reset total(si se pulsa, todos los semÃ¡foros pasan a estar en rojo) ???
+        -- De igual manera, quizÃ¡ sea conveniente establecer las salidas UN SOLO VECTOR (asÃ­ lo hemos establecido en la mFSM
+        SALIDA_INTER : out std_logic_vector (9 downto 0);
+        clkou : out std_logic
         );
 end top;
 
 architecture structural of top is
 
--- DECLARACIÓN DE LOS COMPONENTES
+-- DECLARACIÃ“N DE LOS COMPONENTES
 
-component SYNCHRNZR -- Sincronizador (solo emplearemos uno, al que tendrán que ir las 5 entradas en un vector)
-port(
- CLK : in std_logic;
- ASYNC_IN : in std_logic;
- SYNC_OUT : out std_logic
- --ASYNC_IN : in std_logic_vector (4 downto 0); -- Recibe las entradas del exterior
- --SYNC_OUT : out std_logic_vector (4 downto 0) -- Devuelve las entradas sincronizadas
- );
-end component;
+    component SYNCHRNZR -- Sincronizador (solo emplearemos uno, al que tendrÃ¡n que ir las 5 entradas en un vector)
+        port(
+         CLK : in std_logic;
+         ASYNC_IN : in std_logic;
+         SYNC_OUT : out std_logic
+        );
+    end component;
 
-component EDGEDTCTR -- Edge Counter (igual que con el Sincronizador)
- port (
- CLK : in std_logic;
- SYNC_IN : in std_logic;
- EDGE : out std_logic
- --SYNC_IN : in std_logic_vector (4 downto 0); -- Recibe las entradas sincronizadas
- --EDGE : out std_logic_vector (4 downto 0) -- Devuelve las entradas (??)
- );
-end component;
+    component EDGEDTCTR -- Edge Counter (igual que con el Sincronizador)
+        port (
+         CLK : in std_logic;
+         SYNC_IN : in std_logic;
+         EDGE : out std_logic
+        );
+    end component;
 
-component fsm
- port (
- clk : in std_logic;
- reset : in std_logic; --todo a rojo, estado S2
- sensor : in std_logic;
- p1a : in std_logic;
- p1b : in std_logic;
- p2a : in std_logic;
- p2b : in std_logic;
- sal : out std_logic_vector (9 downto 0)
- );
-end component;
+    component PREESCALER
+        port(
+         CLK100MHZ: 	in STD_LOGIC; --Relog de entrada
+	     CLKOUT:		out STD_LOGIC --Relog de salida
+        );
+    end component;
 
--- DECLARACIÓN DE LAS SEÑALES
+    component fsm
+         port (
+          clk : in std_logic;
+          reset : in std_logic; --todo a rojo, estado S2
+          clkout : in std_logic;
+          sensor : in std_logic;
+          p1a : in std_logic;
+          p1b : in std_logic;
+          p2a : in std_logic;
+          p2b : in std_logic;
+          sal : out std_logic_vector (9 downto 0)
+         );
+    end component;
 
-signal clk : std_logic;
+    component INTERMITTENT
+        port(
+         clk : in std_logic;
+         sal : in std_logic_vector (9 downto 0);
+         INTERM : out std_logic_vector (9 downto 0)
+        );
+    end component;
+-- DECLARACIÃ“N DE LAS SEÃ‘ALES
 
-signal sync_p1a : std_logic;
-signal sync_p1b : std_logic;
-signal sync_p2a : std_logic;
-signal sync_p2b : std_logic;
-signal sync_sensor : std_logic;
-
-signal edge_p1a : std_logic;
-signal edge_p1b : std_logic;
-signal edge_p2a : std_logic;
-signal edge_p2b : std_logic;
-signal edge_sensor : std_logic;
+    --signal clk : std_logic;
+    
+    signal sync_p1a : std_logic;
+    signal sync_p1b : std_logic;
+    signal sync_p2a : std_logic;
+    signal sync_p2b : std_logic;
+    signal sync_sensor : std_logic;
+    
+    signal edge_p1a : std_logic;
+    signal edge_p1b : std_logic;
+    signal edge_p2a : std_logic;
+    signal edge_p2b : std_logic;
+    signal edge_sensor : std_logic;
+    
+    signal SALIDA_FSM : std_logic_vector(9 downto 0);
+    
+    signal clkout : std_logic;
+    
 
 
 begin
 
--- INSTANCIACIÓN DE COMPONENTES 
+-- INSTANCIACIÃ“N DE COMPONENTES 
 
     --Sincronizador P1A
     Inst_SYNCHRNZR_p1a : SYNCHRNZR port map(
@@ -162,16 +166,34 @@ begin
     EDGE => edge_sensor
     );
     
+    inst_PREESCALER : PREESCALER port map(
+    clk100mhZ => clock,
+    clkout => clkout
+    );
+    
     --Maquina de Estados (Cruce)
     Inst_fsm : fsm port map(
     clk => CLOCK,
     reset => RESET,
+    sensor => edge_sensor,
+    CLKOUT => clkout,
     p1a => edge_p1a,
     p1b => edge_p1b,
     p2a => edge_p2a,
-    p2b => edge_p2b,
-    sensor => edge_sensor,
-    sal => SALIDAS-- Sale directamente al exterior el vector de salidas
+    p2b => edge_p2b,    
+    sal => SALIDA_FSM-- Sale directamente al exterior el vector de salidas
+    );
+    Inst_Intermittent: INTERMITTENT port map(
+    clk => clkout,
+	sal => SALIDA_FSM,
+	INTERM => SALIDA_INTER
     );
     
-end structural;
+    ---
+    process(clock)
+    begin
+    if rising_edge(clock) then
+        clkou <= clkout;
+    end if;
+    end process;
+    
