@@ -291,7 +291,7 @@ begin
            when S3i =>
             	sal <= "1000010101";
             	max1aux := "00000000";
-            	max2aux := "01100100"; --poner 100 segundos
+            	max2aux := "01100100"; --50 segundos
                 if (max1 = tiempo1) then -- TIEMPO VERDE SEMAFORO 1
                 	prox <= S4;
                 elsif (max1 = tiempo1) then
