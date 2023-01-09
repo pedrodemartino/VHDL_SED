@@ -5,7 +5,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 entity COUNTER_TB is
 generic(
-		WIDTH : positive :=5 -- de esta manera podemos contar hasta 2 a la 5
+		WIDTH : positive :=8 -- de esta manera podemos contar hasta 2 a la 5
 	);
 end COUNTER_TB;
 
@@ -13,23 +13,23 @@ architecture Behavior of COUNTER_TB is
 component COUNTER
     port (
         MAX: std_logic_vector (WIDTH-1 DOWNTO 0); --Indica hasta cuando hay que contar
-		RESET_N  : in std_logic; --Reset negado
-		CLK : in std_logic; --Señal de reloj
+		RESET  : in std_logic; --Reset negado
+		CLKOUT : in std_logic; --SeÃ±al de reloj
 		COUT : out std_logic_vector (WIDTH-1 DOWNTO 0)
         );
 end component;
 
         signal MAX: std_logic_vector (WIDTH-1 DOWNTO 0);
-		signal RESET_N  : std_logic;
+		signal RESET  : std_logic;
 		signal CLK : std_logic;
 		signal COUT : std_logic_vector (WIDTH-1 DOWNTO 0);
 		
-		constant k: time := 200 ms;
+		constant k: time := 10 ns;
 begin
 uut: COUNTER port map(
     MAX => MAX,
-	RESET_N => RESET_N,
-	CLK => CLK,
+	RESET => RESET,
+	CLKOUT => CLK,
 	COUT => COUT
 );
 
@@ -42,12 +42,16 @@ uut: COUNTER port map(
     end process;
     
     
-    max <= "01010";
+    max <= "00010100";
     
     P1: process
     begin
-        wait for 12*k;
-        reset_n <= '0';
+        reset <= '0';
+        wait for 12 * k;
+        reset <= '1';
+        wait for 2 * k;
+        reset <= '0';
+        wait for 25 * k;
     end process;
     
 end Behavior;
