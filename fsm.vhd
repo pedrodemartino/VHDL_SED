@@ -205,7 +205,7 @@ begin
                 if (max1 = tiempo1) then -- TIEMPO TODO ROJO --Antes la condiciÃ³n implicaba tambiÃ©n a p2a y p2b. No deberÃ­an ser necesarios pero lo apunto por si falla.                	prox <= S3;
                 	prox <= S3;  	
                 	max1aux := "00001010"; -- 5 segundos
-            	    max2aux := "01100100"; -- 100 segundos
+            	    	max2aux := "01100100"; -- 100 segundos
                 else
                 	prox <= S2a;
                 end if;
@@ -289,6 +289,7 @@ begin
                 sal <= "0011000101";
                 if (s = true) or (p2 = true) then 
                     prox <= S1;
+
                 else prox <= S0i;
                 end if;
            when S3i =>
@@ -297,6 +298,8 @@ begin
             	max2aux := "01100100"; --poner 100 segundos
                 if (max1 = tiempo1) then -- TIEMPO VERDE SEMAFORO 1
                 	prox <= S4;
+                elsif (max1 = tiempo1) then
+                    prox <= S0;
                 else
                 	prox <= S3i;
                 end if;
