@@ -176,11 +176,9 @@ begin
             	sal <= "0011000101";
             	max2aux := "00001010"; -- 5 segundos --Nos da igual si usar el contador 1 o 2 pues aqui no hay cuentas simultÃ¡neas
                 max1aux := "00000000";
-                --max2 <= "0001010";
-    	        --m2 <= "0001010";
                 if (p1 = true) and max2 = tiempo2 then -- TIEMPO ROJO EXTRA       	
 		          prox <= S6;
-		        elsif (s = true) or (p2 = true) then
+		elsif (s = true) or (p2 = true) then
                     prox <= S1;
                     max2aux := "00000000";
                     max1aux := "00010100";
@@ -249,7 +247,6 @@ begin
             	sal <= "1000010110";
             	max1aux := "00000000";
             	max2aux := "01010000"; -- 40 segundos
-		        --reseteo el estado asociado al pulsador para una próxima detección
                 if (max2 = tiempo2) then -- TIEMPO VERDE ANTES DE INTERMITENTE
                 	prox <= S5i;
                 else
@@ -268,7 +265,6 @@ begin
             	sal <= "0011001001";
             	max1aux := "00000000";
             	max2aux := "01010000"; -- 40 segundos
-		        --p1 <= false; --reseteo el estado asociado al pulsador para una próxima detección
                 if (max2 = tiempo2) then -- TIEMPO EN VERDE HASTA INTERMITENTE
                 	prox <= S6i;
                 else
