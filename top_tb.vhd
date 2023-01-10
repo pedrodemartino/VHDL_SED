@@ -15,10 +15,10 @@ architecture a1 of top_tb is
         P2B : in std_logic;
         SENSOR : in std_logic; -- Sensor de presencia de coche (carretera 1)
         CLOCK : in std_logic;
-        RESET : in std_logic; -- Reset total(si se pulsa, todos los semáforos pasan a estar en rojo) ???
-        -- De igual manera, quizá sea conveniente establecer las salidas UN SOLO VECTOR (así lo hemos establecido en la mFSM
-        SALIDA_INTER : out std_logic_vector (9 downto 0);
-        clkou : out std_logic
+        RESET : in std_logic; -- Reset total(si se pulsa, todos los semÃ¡foros pasan a estar en rojo) ???
+        -- De igual manera, quizÃ¡ sea conveniente establecer las salidas UN SOLO VECTOR (asÃ­ lo hemos establecido en la mFSM
+        SALIDAS : out std_logic_vector (9 downto 0)
+        --clkou : out std_logic
         );
     end component;
 
@@ -28,14 +28,14 @@ architecture a1 of top_tb is
     signal P2B : std_logic;
     signal SENSOR : std_logic; -- Sensor de presencia de coche (carretera 1)
     signal CLOCK : std_logic;
-    signal RESET : std_logic; -- Reset total(si se pulsa, todos los semáforos pasan a estar en rojo) ???        
-    signal SALIDA_INTER : std_logic_vector (9 downto 0);
+    signal RESET : std_logic; -- Reset total(si se pulsa, todos los semÃ¡foros pasan a estar en rojo) ???        
+    signal SALIDAS : std_logic_vector (9 downto 0);
     
-    signal clkou : std_logic;
+    --signal clkou : std_logic;
     
     
     constant k: time := 10 ns;
-    constant k1: time := 1 ms;
+    constant k1: time :=  100 ns;
     
 begin
 
@@ -47,8 +47,8 @@ begin
         sensor => sensor,
         clock => clock,
         reset => reset,
-        SALIDA_INTER => SALIDA_INTER,
-        clkou => clkou
+        SALIDAS => SALIDAS
+        --clkou => clkou
     );
 
     clk : process
@@ -59,20 +59,21 @@ begin
         wait for k / 2;
     end process;
     
-    reset <= '0';
+    reset <= '1';
     p2a <= '0';
-    p1a <= '0';
+    --p1a <= '0';
     p1b <= '0'; 
     p2b <= '0';
+    sensor <= '0';
     
     a: process
     begin
-         sensor <= '0';
-         wait for 100 * k1;
-         sensor <= '1';
+         p1a <= '0';
          wait for 10 * k1;
-         sensor <= '0';
-         wait for 100000 * k1;
+         p1a <= '1';
+         wait for 10 * k1;
+         p1a <= '0';
+         wait for 10000 * k1;
     end process;
         
 end a1;
