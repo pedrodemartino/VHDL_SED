@@ -61,7 +61,7 @@ begin
         wait for 10 * k / 2;
     end process;
     
-    reset <= '0';
+    reset <= '1';
     
     p2a <= '0';
     p1a <= '0';
