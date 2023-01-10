@@ -44,7 +44,7 @@ end component;
 --DECLARACIÃ"N DE ESTADOS (Y SUS SEÃ'ALES)
 
 type Estados is (S0,S0i,S1,S2a,S2b,S3,S3i,S4,S5,S5i,S6,S6i,SR);
-    signal actual : Estados;
+    signal actual : Estados:=S0;
     signal prox : Estados;
 
 --DECLARACIÃ"N DE SEÃ'ALES 
@@ -88,7 +88,7 @@ begin
         begin
         if rising_edge (clk) then
         
-          if reset = '1' then
+          if reset = '0' then
               actual <= SR; -- Hemos establecido un estado de reset SR
           else
               actual <= prox;
@@ -138,7 +138,7 @@ begin
 	           p2_v := '0';
 	           p2 <= false;
 	      end if;  
-
+	      
 	    end if;
 	    
     end process Pulsadores;
@@ -178,7 +178,7 @@ begin
                 max1aux := "00000000";
                 if (p1 = true) and max2 = tiempo2 then -- TIEMPO ROJO EXTRA       	
 		          prox <= S6;
-		elsif (s = true) or (p2 = true) then
+		        elsif (s = true) or (p2 = true) then
                     prox <= S1;
                     max2aux := "00000000";
                     max1aux := "00010100";
@@ -203,7 +203,7 @@ begin
                 if (max1 = tiempo1) then -- TIEMPO TODO ROJO --Antes la condiciÃ³n implicaba tambiÃ©n a p2a y p2b. No deberÃ­an ser necesarios pero lo apunto por si falla.                	prox <= S3;
                 	prox <= S3;  	
                 	max1aux := "00001010"; -- 5 segundos
-            	    	max2aux := "01100100"; -- 100 segundos
+            	    max2aux := "01100100"; -- 100 segundos
                 else
                 	prox <= S2a;
                 end if;
@@ -247,6 +247,7 @@ begin
             	sal <= "1000010110";
             	max1aux := "00000000";
             	max2aux := "01010000"; -- 40 segundos
+		        --reseteo el estado asociado al pulsador para una próxima detección
                 if (max2 = tiempo2) then -- TIEMPO VERDE ANTES DE INTERMITENTE
                 	prox <= S5i;
                 else
@@ -265,6 +266,7 @@ begin
             	sal <= "0011001001";
             	max1aux := "00000000";
             	max2aux := "01010000"; -- 40 segundos
+		        --p1 <= false; --reseteo el estado asociado al pulsador para una próxima detección
                 if (max2 = tiempo2) then -- TIEMPO EN VERDE HASTA INTERMITENTE
                 	prox <= S6i;
                 else
@@ -273,29 +275,28 @@ begin
            when S6i =>
                 max1aux := "00000000";
                 max2aux := "00001010"; -- 5 segundos
-                sal <= "1111111111";
+                sal <= "1111111110";
                 if (max2 = tiempo2) then -- TIEMPO PARPADEO
                     prox <= S0i;
                 else
                     prox <= S6i;
                 end if;
            when S0i =>
-                max1aux := "00000000";
-                max2aux := "00000000"; 
+                max1aux := "01010000";
+                max2aux := "00000000"; --Tiempo de espera en el que no se pueden pulsar el pulsador 1, 40 segundos
                 sal <= "0011000101";
                 if (s = true) or (p2 = true) then 
                     prox <= S1;
-
+                elsif (max1 = tiempo1) then
+                    prox <= S0;
                 else prox <= S0i;
                 end if;
            when S3i =>
             	sal <= "1000010101";
             	max1aux := "00000000";
-            	max2aux := "01100100"; --50 segundos
+            	max2aux := "01100100"; --poner 100 segundos
                 if (max1 = tiempo1) then -- TIEMPO VERDE SEMAFORO 1
                 	prox <= S4;
-                elsif (max1 = tiempo1) then
-                    prox <= S0;
                 else
                 	prox <= S3i;
                 end if;
@@ -313,7 +314,6 @@ begin
     	max2 <= max2aux;
     	max1 <= max1aux;
     	end if;
-    end process Combinacional;
-        
+    end process Combinacional;       
      
 end architecture Estados;
