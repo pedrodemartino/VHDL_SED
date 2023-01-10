@@ -17,8 +17,8 @@ entity top is
         CLOCK : in std_logic;
         RESET : in std_logic; -- Reset total(si se pulsa, todos los semáforos pasan a estar en rojo) ???
         -- De igual manera, quizá sea conveniente establecer las salidas UN SOLO VECTOR (así lo hemos establecido en la mFSM
-        SALIDA_INTER : out std_logic_vector (9 downto 0);
-        clkou : out std_logic
+        SALIDAS : out std_logic_vector (9 downto 0)
+        --clkou : out std_logic
         );
 end top;
 
@@ -86,7 +86,7 @@ architecture structural of top is
     signal edge_p2b : std_logic;
     signal edge_sensor : std_logic;
     
-    signal SALIDA_FSM : std_logic_vector(9 downto 0);
+    signal SALIDA_FSM : std_logic_vector(9 downto 0):="0011000101";
     
     signal clkout : std_logic;
     
@@ -186,14 +186,10 @@ begin
     Inst_Intermittent: INTERMITTENT port map(
     clk => clkout,
 	sal => SALIDA_FSM,
-	INTERM => SALIDA_INTER
+	INTERM => SALIDAS
     );
     
     ---
-    process(clock)
-    begin
-    if rising_edge(clock) then
-        clkou <= clkout;
-    end if;
-    end process;
     
+    
+end structural;
